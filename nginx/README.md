@@ -27,9 +27,9 @@ npm run build
 
 编辑 `nginx.conf` 文件，修改以下配置：
 
-- `server_name`: 改为您的域名
-- `root`: 改为前端构建文件的绝对路径
-- `upstream backend`: 确保后端服务器地址正确
+- `server_name`: 已设置为 `_`，支持通过 IP 地址访问（也可改为具体 IP 如 `192.168.1.100`）
+- `root`: 改为前端构建文件的绝对路径（默认：`/var/www/ai-learning-platform/frontend/dist`）
+- `upstream backend`: 确保后端服务器地址正确（默认：`localhost:3001`）
 
 ### 3. 安装配置文件
 
@@ -65,6 +65,13 @@ pm2 start backend/dist/index.js --name ai-learning-backend
 
 ## 配置说明
 
+### IP 地址访问
+
+当前配置已设置为支持 IP 地址访问：
+- `server_name _;` 表示匹配所有域名和 IP 地址
+- 可以通过服务器的 IP 地址直接访问，如：`http://192.168.1.100`
+- 如果需要限制为特定 IP，可以改为：`server_name 192.168.1.100;`
+
 ### 前端路径
 
 默认配置假设前端构建文件在：
@@ -74,6 +81,11 @@ pm2 start backend/dist/index.js --name ai-learning-backend
 
 请根据实际部署路径修改 `root` 指令。
 
+**本地测试路径示例**：
+```nginx
+root /Users/yuchuncao/Documents/code/ai/frontend/dist;
+```
+
 ### 后端代理
 
 API 请求会被代理到：
@@ -82,6 +94,14 @@ http://localhost:3001
 ```
 
 如果需要修改，编辑 `upstream backend` 部分。
+
+**注意**：如果后端服务运行在不同的服务器上，需要修改为实际的 IP 地址：
+```nginx
+upstream backend {
+    server 192.168.1.101:3001;  # 后端服务器 IP 和端口
+    keepalive 64;
+}
+```
 
 ### 静态资源缓存
 
