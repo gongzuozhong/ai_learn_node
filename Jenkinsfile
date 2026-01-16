@@ -115,27 +115,40 @@ pipeline {
                     
                     # 在远程服务器上执行部署（deploy-docker.sh 已包含重启服务逻辑）
                     ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'ENDSSH'
-                        set -e
+                        # 移除 set -e，改为手动检查关键命令
                         mkdir -p /opt/nginx/html/ai
                         cd /tmp && tar -xzf deploy-package.tar.gz
                         
                         # 备份旧版本
-                        [ -d /opt/nginx/html/ai/current ] && \
+                        if [ -d /opt/nginx/html/ai/current ]; then
                             mv /opt/nginx/html/ai/current /opt/nginx/html/ai/backup-$(date +%Y%m%d-%H%M%S)
+                        fi
                         
                         # 创建新版本目录并复制文件
                         mkdir -p /opt/nginx/html/ai/current/{backend,docker/logs}
                         cp -r deploy-package/frontend-dist/* /opt/nginx/html/ai/current/
                         cp -r deploy-package/backend/* /opt/nginx/html/ai/current/backend/
-                        [ -d deploy-package/shared ] && cp -r deploy-package/shared /opt/nginx/html/ai/current/
+                        if [ -d deploy-package/shared ]; then
+                            cp -r deploy-package/shared /opt/nginx/html/ai/current/
+                        fi
                         # 复制 Docker 配置文件，确保文件名为 docker-compose.yml（podman-compose 需要）
-                        cp deploy-package/docker/docker-compose.production.yml /opt/nginx/html/ai/current/docker/docker-compose.yml 2>/dev/null || \
-                        cp deploy-package/docker/* /opt/nginx/html/ai/current/docker/
-                        cp deploy-package/docker/nginx.conf.docker /opt/nginx/html/ai/current/docker/ 2>/dev/null || true
+                        if [ -f deploy-package/docker/docker-compose.production.yml ]; then
+                            cp deploy-package/docker/docker-compose.production.yml /opt/nginx/html/ai/current/docker/docker-compose.yml
+                        else
+                            cp deploy-package/docker/* /opt/nginx/html/ai/current/docker/
+                        fi
+                        if [ -f deploy-package/docker/nginx.conf.docker ]; then
+                            cp deploy-package/docker/nginx.conf.docker /opt/nginx/html/ai/current/docker/
+                        fi
                         
                         # 执行部署脚本（包含停止、构建、启动和健康检查）
                         chmod +x deploy-package/deploy-docker.sh
-                        bash deploy-package/deploy-docker.sh /opt/nginx/html/ai/current
+                        if bash deploy-package/deploy-docker.sh /opt/nginx/html/ai/current; then
+                            echo "部署脚本执行成功"
+                        else
+                            echo "部署脚本执行失败"
+                            exit 1
+                        fi
                         
                         # 清理临时文件
                         rm -rf /tmp/deploy-package /tmp/deploy-package.tar.gz
