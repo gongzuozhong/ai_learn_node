@@ -128,7 +128,10 @@ pipeline {
                         cp -r deploy-package/frontend-dist/* /opt/nginx/html/ai/current/
                         cp -r deploy-package/backend/* /opt/nginx/html/ai/current/backend/
                         [ -d deploy-package/shared ] && cp -r deploy-package/shared /opt/nginx/html/ai/current/
+                        # 复制 Docker 配置文件，确保文件名为 docker-compose.yml（podman-compose 需要）
+                        cp deploy-package/docker/docker-compose.production.yml /opt/nginx/html/ai/current/docker/docker-compose.yml 2>/dev/null || \
                         cp deploy-package/docker/* /opt/nginx/html/ai/current/docker/
+                        cp deploy-package/docker/nginx.conf.docker /opt/nginx/html/ai/current/docker/ 2>/dev/null || true
                         
                         # 执行部署脚本（包含停止、构建、启动和健康检查）
                         chmod +x deploy-package/deploy-docker.sh

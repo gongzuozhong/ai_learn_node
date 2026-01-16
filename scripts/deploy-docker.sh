@@ -65,13 +65,40 @@ fi
 
 cd "$DOCKER_DIR" || exit 1
 
+# 确定 compose 文件路径（podman-compose 默认查找 docker-compose.yml）
+COMPOSE_FILE="docker-compose.yml"
+if [ ! -f "$COMPOSE_FILE" ]; then
+    # 如果不存在，尝试其他可能的文件名
+    if [ -f "docker-compose.production.yml" ]; then
+        COMPOSE_FILE="docker-compose.production.yml"
+    elif [ -f "compose.yml" ]; then
+        COMPOSE_FILE="compose.yml"
+    else
+        echo "错误: 未找到 docker-compose.yml 文件"
+        echo "当前目录: $(pwd)"
+        echo "文件列表:"
+        ls -la || true
+        exit 1
+    fi
+fi
+
+echo "使用 Compose 文件: $COMPOSE_FILE"
+
 # 停止旧容器（如果存在）
 echo "停止旧容器..."
-$COMPOSE_CMD down || true
+if [ "$COMPOSE_FILE" = "docker-compose.yml" ]; then
+    $COMPOSE_CMD down || true
+else
+    $COMPOSE_CMD -f "$COMPOSE_FILE" down || true
+fi
 
 # 构建并启动服务
 echo "构建并启动容器服务..."
-$COMPOSE_CMD up -d --build
+if [ "$COMPOSE_FILE" = "docker-compose.yml" ]; then
+    $COMPOSE_CMD up -d --build
+else
+    $COMPOSE_CMD -f "$COMPOSE_FILE" up -d --build
+fi
 
 # 等待服务启动
 echo "等待服务启动..."
