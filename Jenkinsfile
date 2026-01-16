@@ -82,16 +82,23 @@ pipeline {
                     
                     # 复制后端文件
                     mkdir -p deploy-package/backend
-                    cp -r backend/{dist,prisma} deploy-package/backend/
-                    cp backend/{package.json,Dockerfile,entrypoint.sh} deploy-package/backend/ 2>/dev/null || true
+                    cp -r backend/dist deploy-package/backend/ 2>/dev/null || true
+                    cp -r backend/prisma deploy-package/backend/ 2>/dev/null || true
+                    cp backend/package.json deploy-package/backend/ 2>/dev/null || true
+                    cp backend/Dockerfile deploy-package/backend/ 2>/dev/null || true
+                    cp backend/entrypoint.sh deploy-package/backend/ 2>/dev/null || true
                     cp backend/package-lock.json deploy-package/backend/ 2>/dev/null || true
                     chmod +x deploy-package/backend/entrypoint.sh 2>/dev/null || true
                     
                     # 复制 shared 包和 Docker 配置
-                    [ -d shared ] && cp -r shared deploy-package/
+                    if [ -d shared ]; then
+                        cp -r shared deploy-package/
+                    fi
                     mkdir -p deploy-package/docker
-                    cp nginx/{docker-compose.production.yml,nginx.conf.docker} deploy-package/docker/
-                    cp scripts/deploy-docker.sh deploy-package/ && chmod +x deploy-package/deploy-docker.sh
+                    cp nginx/docker-compose.production.yml deploy-package/docker/ 2>/dev/null || true
+                    cp nginx/nginx.conf.docker deploy-package/docker/ 2>/dev/null || true
+                    cp scripts/deploy-docker.sh deploy-package/ 2>/dev/null || true
+                    chmod +x deploy-package/deploy-docker.sh 2>/dev/null || true
                     
                     # 创建部署包
                     tar -czf deploy-package.tar.gz deploy-package/
