@@ -1,7 +1,12 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { CourseCategory, Difficulty } from '@ai-learning/shared';
 
 const prisma = new PrismaClient();
+
+// 定义包含 chapters 的 Course 类型
+type CourseWithChapters = Prisma.CourseGetPayload<{
+  include: { chapters: true };
+}>;
 
 // 课程依赖关系映射
 const courseDependencies: Record<string, string[]> = {
@@ -41,8 +46,8 @@ export async function generateLearningPath(
   });
 
   // 构建课程依赖图
-  const courseMap = new Map(allCourses.map(c => [c.id, c]));
-  const sortedCourses: typeof allCourses = [];
+  const courseMap = new Map<string, CourseWithChapters>(allCourses.map((c: CourseWithChapters) => [c.id, c]));
+  const sortedCourses: CourseWithChapters[] = [];
   const visited = new Set<string>();
   const visiting = new Set<string>();
 
@@ -63,7 +68,7 @@ export async function generateLearningPath(
     // 先访问依赖课程
     const deps = courseDependencies[course.category] || [];
     for (const depCategory of deps) {
-      const depCourses = allCourses.filter(c => 
+      const depCourses = allCourses.filter((c: CourseWithChapters) => 
         c.category === depCategory && 
         difficultyOrder[c.difficulty as keyof typeof difficultyOrder] <= 
         difficultyOrder[course.difficulty as keyof typeof difficultyOrder]
@@ -80,7 +85,7 @@ export async function generateLearningPath(
 
   // 对每个兴趣领域的课程进行排序
   for (const interest of interests) {
-    const interestCourses = allCourses.filter(c => c.category === interest);
+    const interestCourses = allCourses.filter((c: CourseWithChapters) => c.category === interest);
     for (const course of interestCourses) {
       visit(course.id);
     }
@@ -88,7 +93,7 @@ export async function generateLearningPath(
 
   // 过滤掉不符合当前水平的课程
   const userLevel = difficultyOrder[currentLevel as keyof typeof difficultyOrder];
-  const filteredCourses = sortedCourses.filter(course => {
+  const filteredCourses = sortedCourses.filter((course: CourseWithChapters) => {
     const courseLevel = difficultyOrder[course.difficulty as keyof typeof difficultyOrder];
     return courseLevel <= userLevel + 1; // 允许高一级的课程
   });
@@ -103,8 +108,13 @@ export async function generateLearningPath(
       description: pathDescription,
       targetAudience: `水平: ${currentLevel}`,
       pathItems: {
-        create: filteredCourses.flatMap((course, courseIndex) => {
-          const items = [];
+        create: filteredCourses.flatMap((course: CourseWithChapters, courseIndex: number) => {
+          const items: Array<{
+            courseId: string;
+            chapterId?: string;
+            order: number;
+            type: string;
+          }> = [];
           // 添加课程节点
           items.push({
             courseId: course.id,
@@ -112,7 +122,7 @@ export async function generateLearningPath(
             type: 'course',
           });
           // 添加章节节点
-          course.chapters.forEach((chapter, chapterIndex) => {
+          course.chapters.forEach((chapter, chapterIndex: number) => {
             items.push({
               courseId: course.id,
               chapterId: chapter.id,
