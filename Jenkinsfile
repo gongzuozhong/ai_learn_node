@@ -114,7 +114,7 @@ pipeline {
                     scp -o StrictHostKeyChecking=no deploy-package.tar.gz ${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/
                     
                     # 在远程服务器上执行部署（deploy-docker.sh 已包含重启服务逻辑）
-                    ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'ENDSSH'
+                    ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} bash << 'ENDSSH'
                         # 移除 set -e，改为手动检查关键命令
                         mkdir -p /opt/nginx/html/ai
                         cd /tmp && tar -xzf deploy-package.tar.gz
@@ -143,16 +143,19 @@ pipeline {
                         
                         # 执行部署脚本（包含停止、构建、启动和健康检查）
                         chmod +x deploy-package/deploy-docker.sh
-                        if bash deploy-package/deploy-docker.sh /opt/nginx/html/ai/current; then
+                        DEPLOY_RESULT=0
+                        bash deploy-package/deploy-docker.sh /opt/nginx/html/ai/current || DEPLOY_RESULT=$?
+                        
+                        if [ $DEPLOY_RESULT -eq 0 ]; then
                             echo "部署脚本执行成功"
                         else
-                            echo "部署脚本执行失败"
-                            exit 1
+                            echo "部署脚本执行失败，退出码: $DEPLOY_RESULT"
+                            exit $DEPLOY_RESULT
                         fi
                         
                         # 清理临时文件
-                        rm -rf /tmp/deploy-package /tmp/deploy-package.tar.gz
-                    ENDSSH
+                        rm -rf /tmp/deploy-package /tmp/deploy-package.tar.gz || true
+ENDSSH
                 '''
             }
         }
