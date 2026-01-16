@@ -25,11 +25,11 @@ pipeline {
                     # 加载 nvm（支持多个可能的安装路径）
                     export NVM_DIR="$HOME/.nvm"
                     if [ -s "$NVM_DIR/nvm.sh" ]; then
-                        source "$NVM_DIR/nvm.sh"
+                        . "$NVM_DIR/nvm.sh"
                     elif [ -s "/usr/local/opt/nvm/nvm.sh" ]; then
-                        source "/usr/local/opt/nvm/nvm.sh"
+                        . "/usr/local/opt/nvm/nvm.sh"
                     elif [ -s "/opt/homebrew/opt/nvm/nvm.sh" ]; then
-                        source "/opt/homebrew/opt/nvm/nvm.sh"
+                        . "/opt/homebrew/opt/nvm/nvm.sh"
                     fi
                     
                     # 使用 Node.js 22
