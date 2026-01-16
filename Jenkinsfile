@@ -20,54 +20,33 @@ pipeline {
         
         stage('Build') {
             steps {
-                script {
-                    // 定义构建命令（公共部分）
-                    def buildCommands = '''
-                        echo "Node 版本: $(node --version)"
-                        echo "NPM 版本: $(npm --version)"
-                        echo "安装依赖..."
-                        npm install
-                        npm run install:all
-                        echo "构建前端..."
-                        npm run build --workspace=frontend
-                        echo "构建后端..."
-                        cd backend && npm run build && npm run prisma:generate && cd ..
-                    '''
+                echo '构建项目...'
+                sh '''
+                    # 检查 Node.js
+                    if ! command -v node &> /dev/null; then
+                        echo "错误: Node.js 未安装，请安装 Node.js 22+"
+                        exit 1
+                    fi
                     
-                    // 尝试使用 Docker 构建，失败则回退到主机构建
-                    def useDocker = false
-                    try {
-                        def dockerCheck = sh(
-                            script: 'command -v docker >/dev/null 2>&1 && docker --version',
-                            returnStatus: true
-                        )
-                        if (dockerCheck == 0) {
-                            useDocker = true
-                        }
-                    } catch (Exception e) {
-                        echo "Docker 不可用，使用主机构建"
-                    }
+                    echo "Node 版本: $(node --version)"
+                    echo "NPM 版本: $(npm --version)"
                     
-                    if (useDocker) {
-                        try {
-                            docker.image("node:18").inside('-v /var/run/docker.sock:/var/run/docker.sock') {
-                                sh buildCommands
-                            }
-                        } catch (Exception e) {
-                            echo "Docker 构建失败，回退到主机构建: ${e.getMessage()}"
-                            useDocker = false
-                        }
-                    }
+                    # 安装依赖
+                    echo "安装依赖..."
+                    npm install
+                    npm run install:all
                     
-                    if (!useDocker) {
-                        sh '''
-                            if ! command -v node &> /dev/null; then
-                                echo "错误: Node.js 未安装，请安装 Node.js 18+"
-                                exit 1
-                            fi
-                        ''' + buildCommands
-                    }
-                }
+                    # 构建前端
+                    echo "构建前端..."
+                    npm run build --workspace=frontend
+                    
+                    # 构建后端
+                    echo "构建后端..."
+                    cd backend
+                    npm run build
+                    npm run prisma:generate
+                    cd ..
+                '''
             }
         }
         

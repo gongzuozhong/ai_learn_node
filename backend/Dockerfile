@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:22-alpine
 
 # 安装 OpenSSL（Prisma 需要）
 # Alpine 3.19+ 使用 openssl3，旧版本使用 openssl1.1-compat
