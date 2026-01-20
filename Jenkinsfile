@@ -1,9 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'NodeJS-22'
-    } 
     environment {
         // 远程服务器配置
         DEPLOY_HOST = '180.76.180.105'
@@ -21,60 +18,25 @@ pipeline {
             }
         }
         
-        stage('Test Node.js') {
-            steps {
-                echo '测试 Node.js 环境...'
-                script {
-                    // 使用 tool 指令确保 Node.js 在 PATH 中
-                    def nodejs = tool name: 'NodeJS-22', type: 'hudson.plugins.nodejs.tools.NodeJSInstallation'
-                    env.PATH = "${nodejs}/bin:${env.PATH}"
-                }
-                sh '''
-                    # 检查 Node.js 是否安装
-                    if ! command -v node &> /dev/null; then
-                        echo "❌ 错误: Node.js 未安装，请安装 Node.js 22+"
-                        echo "检查常见路径..."
-                        ls -la /var/jenkins_home/tools/jenkins.plugins.nodejs.tools.NodeJSInstallation/NodeJS-22/bin/ 2>/dev/null || true
-                        exit 1
-                    fi
-                    
-                    # 获取版本信息
-                    NODE_VERSION=$(node --version)
-                    NPM_VERSION=$(npm --version)
-                    NODE_PATH=$(which node)
-                    NPM_PATH=$(which npm)
-                    
-                    # 显示版本信息
-                    echo "=========================================="
-                    echo "Node.js 环境信息"
-                    echo "=========================================="
-                    echo "Node 版本: $NODE_VERSION"
-                    echo "NPM 版本: $NPM_VERSION"
-                    echo "Node 路径: $NODE_PATH"
-                    echo "NPM 路径: $NPM_PATH"
-                    echo "=========================================="
-                    
-                    # 检查 Node.js 版本是否符合要求（22+）
-                    NODE_MAJOR_VERSION=$(echo $NODE_VERSION | sed 's/v//' | cut -d. -f1)
-                    if [ "$NODE_MAJOR_VERSION" -lt 22 ]; then
-                        echo "❌ 错误: Node.js 版本过低，需要 22+，当前版本: $NODE_VERSION"
-                        exit 1
-                    fi
-                    
-                    echo "✅ Node.js 版本检查通过: $NODE_VERSION"
-                    
-                    # 测试基本命令
-                    echo "测试 Node.js 和 NPM 命令..."
-                    node --version > /dev/null && echo "✅ node 命令正常" || (echo "❌ node 命令失败" && exit 1)
-                    npm --version > /dev/null && echo "✅ npm 命令正常" || (echo "❌ npm 命令失败" && exit 1)
-                '''
-            }
-        }
-        
         stage('Build') {
             steps {
                 echo '构建项目...'
                 sh '''
+                    # 使用全局配置的 Node.js 路径
+                    JENKINS_NODE_PATH="/var/jenkins_home/tools/jenkins.plugins.nodejs.tools.NodeJSInstallation/NodeJS-22/bin"
+                    
+                    if [ -f "$JENKINS_NODE_PATH/node" ]; then
+                        echo "✅ 使用全局配置的 Node.js: $JENKINS_NODE_PATH"
+                        export PATH="$JENKINS_NODE_PATH:$PATH"
+                    else
+                        echo "❌ 错误: Node.js 未找到，请检查全局工具配置"
+                        exit 1
+                    fi
+                    
+                    echo "Node 版本: $(node --version)"
+                    echo "NPM 版本: $(npm --version)"
+                    echo "Node 路径: $(which node)"
+                    
                     # 安装依赖
                     echo "安装依赖..."
                     npm install
