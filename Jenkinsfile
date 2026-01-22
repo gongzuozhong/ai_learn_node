@@ -4,7 +4,7 @@ pipeline {
     environment {
         //  远程服务器配置
         DEPLOY_HOST = credentials('deploy-host-168')
-        DEPLOY_USER = credentials('deploy-user-138')
+        DEPLOY_USER = credentials('deploy-user-168')
         SSH_CREDENTIALS_ID = 'deploy-ssh168-key'
         DEPLOY_PATH = '/www/wwwroot/gitadmin.localgitserver.com/ai'
         // 如果需要 SSH 密钥，可以在 Jenkins 中配置 SSH credentials
