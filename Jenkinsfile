@@ -58,7 +58,9 @@ pipeline {
                 echo '准备部署文件...'
                 sh '''
                     # 创建临时构建目录（整理部署所需文件）
-                    mkdir -p build-output/{frontend,backend,shared}
+                    mkdir -p build-output/frontend
+                    mkdir -p build-output/backend
+                    chmod -R 755 build-output  # 确保Jenkins用户有读写权限
                     
                     # 复制前端构建产物（静态资源，直接部署到 Web 根目录）
                     cp -r frontend/dist/* build-output/frontend/
