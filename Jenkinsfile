@@ -27,6 +27,11 @@ pipeline {
             steps {
                 echo '构建项目...'
                 sh '''
+                    # 此时 node/npm 已经在 PATH 中了
+                    echo "Node 版本: $(node --version)"
+                    echo "NPM 版本: $(npm --version)"
+                    # 后续构建命令...
+                    
                     # 直接使用 Jenkins 全局环境中的 Node.js
                     if ! command -v node >/dev/null 2>&1; then
                         echo "❌ 错误: 没有在 PATH 中找到 node 命令"
