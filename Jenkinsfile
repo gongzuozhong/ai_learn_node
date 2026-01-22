@@ -1,18 +1,16 @@
 pipeline {
     agent any
-
     environment {
-        //  远程服务器配置
-        DEPLOY_HOST = credentials('deploy-host-168')
-        DEPLOY_USER = credentials('deploy-user-168')
-        SSH_CREDENTIALS_ID = 'deploy-ssh168-key'
-        DEPLOY_PATH = '/www/wwwroot/gitadmin.localgitserver.com/ai'
-        // 如果需要 SSH 密钥，可以在 Jenkins 中配置 SSH credentials
-        //  SSH_CREDENTIALS = credentials('deploy-ssh-key')
+        // 本地 Web 部署目录（根据实际环境修改，需确保 Jenkins 有读写权限）
+        LOCAL_WEB_ROOT = '/www/wwwroot/gitadmin.localgitserver.com'
+        // 项目部署子目录（避免与其他项目冲突）
+        PROJECT_DEPLOY_DIR = "${LOCAL_WEB_ROOT}/aistudy"
+        // 备份目录（保留历史版本，便于回滚）
+        BACKUP_DIR = "${LOCAL_WEB_ROOT}/aistudy-backups"
     }
-    //  定义工具（如果需要指定 Node.js 版本，需先在 Jenkins 全局工具配置中配置 NodeJS 安装）
+    // 定义工具（Node.js 需在 Jenkins 全局工具配置中提前配置）
     tools {
-        nodejs 'NodeJS-22' //  替换为你 Jenkins 中配置的 Node.js 工具名称（若无则注释此行）
+        nodejs 'NodeJS-22' // 替换为你的 Jenkins Node.js 工具名称（无则注释此行）
     }
     
     stages {
@@ -27,130 +25,102 @@ pipeline {
             steps {
                 echo '构建项目...'
                 sh '''
-                    # 此时 node/npm 已经在 PATH 中了
-                    echo "Node 版本: $(node --version)"
-                    echo "NPM 版本: $(npm --version)"
-                    # 后续构建命令...
-                    
-                    # 直接使用 Jenkins 全局环境中的 Node.js
+                    # 验证 Node.js 环境
                     if ! command -v node >/dev/null 2>&1; then
-                        echo "❌ 错误: 没有在 PATH 中找到 node 命令"
-                        echo "请确认 Jenkins 节点上已经安装并全局可用的 Node.js（例如通过 nvm 或系统包安装），"
-                        echo "并且 Jenkins 构建环境已经正确加载了对应的环境变量。"
+                        echo "❌ 错误: 未找到 Node.js 命令"
+                        echo "请确保 Jenkins 节点已安装 Node.js 并配置到环境变量"
                         exit 1
                     fi
-
                     echo "Node 版本: $(node --version)"
                     echo "NPM 版本: $(npm --version)"
-                    echo "Node 路径: $(which node)"
                     
-                    # 安装依赖
+                    # 安装项目依赖
                     echo "安装依赖..."
                     npm install
                     npm run install:all
                     
-                    # 构建前端
+                    # 构建前端（生成静态资源）
                     echo "构建前端..."
                     npm run build --workspace=frontend
                     
-                    # 构建后端
+                    # 构建后端（TypeScript 编译 + Prisma Client 生成）
                     echo "构建后端..."
                     cd backend
-                    # 先生成 Prisma Client（构建时需要类型）
                     npm run prisma:generate
-                    # 然后构建 TypeScript
                     npm run build
                     cd ..
                 '''
             }
         }
         
-        stage('Prepare Deployment Package') {
+        stage('Prepare Deployment Files') {
             steps {
-                echo '准备部署包...'
+                echo '准备部署文件...'
                 sh '''
-                    # 创建临时部署目录
-                    mkdir -p deploy-package
+                    # 创建临时构建目录（整理部署所需文件）
+                    mkdir -p build-output/{frontend,backend,shared}
                     
-                    # 复制前端构建产物
-                    cp -r frontend/dist deploy-package/frontend-dist
+                    # 复制前端构建产物（静态资源，直接部署到 Web 根目录）
+                    cp -r frontend/dist/* build-output/frontend/
                     
-                    # 复制后端文件
-                    mkdir -p deploy-package/backend
-                    cp -r backend/dist deploy-package/backend/ 2>/dev/null || true
-                    cp -r backend/prisma deploy-package/backend/ 2>/dev/null || true
-                    cp backend/package.json deploy-package/backend/ 2>/dev/null || true
-                    cp backend/Dockerfile deploy-package/backend/ 2>/dev/null || true
-                    cp backend/entrypoint.sh deploy-package/backend/ 2>/dev/null || true
-                    cp backend/package-lock.json deploy-package/backend/ 2>/dev/null || true
-                    chmod +x deploy-package/backend/entrypoint.sh 2>/dev/null || true
-                    
-                    # 复制 shared 包和 Docker 配置
-                    if [ -d shared ]; then
-                        cp -r shared deploy-package/
-                    fi
-                    mkdir -p deploy-package/docker
-                    cp nginx/docker-compose.production.yml deploy-package/docker/ 2>/dev/null || true
-                    cp nginx/nginx.conf.docker deploy-package/docker/ 2>/dev/null || true
-                    cp scripts/deploy-docker.sh deploy-package/ 2>/dev/null || true
-                    chmod +x deploy-package/deploy-docker.sh 2>/dev/null || true
-                    
-                    # 创建部署包
-                    tar -czf deploy-package.tar.gz deploy-package/
+                    # 复制后端运行文件（编译后的代码 + 依赖配置 + Prisma）
+                    cp -r backend/dist build-output/backend/
+                    cp -r backend/prisma build-output/backend/
+                    cp backend/package.json build-output/backend/
+                    cp backend/package-lock.json build-output/backend/
+                   
                 '''
             }
         }
         
-        stage('Deploy') {
+        stage('Deploy to Local Web Server') {
             steps {
-                echo '部署到远程服务器...'
+                echo "部署到本地 Web 目录: ${PROJECT_DEPLOY_DIR}"
                 sh '''
-                    # 传输部署包
-                    scp -o StrictHostKeyChecking=no deploy-package.tar.gz ${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/
+                    # 创建备份目录（若不存在）
+                    mkdir -p ${BACKUP_DIR}
                     
-                    # 在远程服务器上执行部署（deploy-docker.sh 已包含重启服务逻辑）
-                    ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} bash << 'ENDSSH'
-                        # 移除 set -e，改为手动检查关键命令
-                        mkdir -p /opt/nginx/html/ai
-                        cd /tmp && tar -xzf deploy-package.tar.gz
-                        
-                        # 备份旧版本
-                        if [ -d /opt/nginx/html/ai/current ]; then
-                            mv /opt/nginx/html/ai/current /opt/nginx/html/ai/backup-$(date +%Y%m%d-%H%M%S)
-                        fi
-                        
-                        # 创建新版本目录并复制文件
-                        mkdir -p /opt/nginx/html/ai/current/{backend,docker/logs}
-                        cp -r deploy-package/frontend-dist/* /opt/nginx/html/ai/current/
-                        cp -r deploy-package/backend/* /opt/nginx/html/ai/current/backend/
-                        if [ -d deploy-package/shared ]; then
-                            cp -r deploy-package/shared /opt/nginx/html/ai/current/
-                        fi
-                        # 复制 Docker 配置文件，确保文件名为 docker-compose.yml（podman-compose 需要）
-                        if [ -f deploy-package/docker/docker-compose.production.yml ]; then
-                            cp deploy-package/docker/docker-compose.production.yml /opt/nginx/html/ai/current/docker/docker-compose.yml
-                        else
-                            cp deploy-package/docker/* /opt/nginx/html/ai/current/docker/
-                        fi
-                        if [ -f deploy-package/docker/nginx.conf.docker ]; then
-                            cp deploy-package/docker/nginx.conf.docker /opt/nginx/html/ai/current/docker/
-                        fi
-                        
-                        # 执行部署脚本（包含停止、构建、启动和健康检查）
-                        chmod +x deploy-package/deploy-docker.sh
-                        DEPLOY_RESULT=0
-                        bash deploy-package/deploy-docker.sh /opt/nginx/html/ai/current || DEPLOY_RESULT=$?
-                        
-                        if [ $DEPLOY_RESULT -eq 0 ]; then
-                            echo "部署脚本执行成功"
-                        else
-                            echo "部署脚本执行失败，退出码: $DEPLOY_RESULT"
-                            exit $DEPLOY_RESULT
-                        fi
-                        
-                        # 清理临时文件
-                        rm -rf /tmp/deploy-package /tmp/deploy-package.tar.gz || true
-ENDSSH
+                    # 备份当前运行版本（保留时间戳，便于回滚）
+                    if [ -d ${PROJECT_DEPLOY_DIR} ]; then
+                        BACKUP_NAME="backup-$(date +%Y%m%d-%H%M%S)"
+                        mv ${PROJECT_DEPLOY_DIR} ${BACKUP_DIR}/${BACKUP_NAME}
+                        echo "✅ 已备份当前版本到: ${BACKUP_DIR}/${BACKUP_NAME}"
+                    fi
+                    
+                    # 创建新的部署目录
+                    mkdir -p ${PROJECT_DEPLOY_DIR}
+                    
+                    # 复制前端静态资源到 Web 可访问目录
+                    cp -r build-output/frontend/* ${PROJECT_DEPLOY_DIR}/
+                    
+                    # 复制后端文件到部署目录（后端可通过 Node 服务运行）
+                    mkdir -p ${PROJECT_DEPLOY_DIR}/backend
+                    cp -r build-output/backend/* ${PROJECT_DEPLOY_DIR}/backend/
+                    
+                    
+                    
+                    # 安装后端生产依赖（避免复制 node_modules，减少体积）
+                    echo "安装后端生产依赖..."
+                    cd ${PROJECT_DEPLOY_DIR}/backend
+                    npm install --production
+                    
+                    # 启动/重启后端服务（根据项目实际启动方式调整）
+                    echo "启动后端服务..."
+                    # 方式1：直接通过 node 启动（前台运行，适合简单场景）
+                    # nohup node dist/index.js > ${PROJECT_DEPLOY_DIR}/backend.log 2>&1 &
+                    
+
+                    
+                    # 配置目录权限（确保 Web 服务器和 Node 服务可访问）
+                    chmod -R 755 ${PROJECT_DEPLOY_DIR}
+                    # 若 Web 服务器用户为 www（如 Nginx/Apache），添加权限
+                    if id -u www >/dev/null 2>&1; then
+                        chown -R www:www ${PROJECT_DEPLOY_DIR}
+                    fi
+                    
+                    echo "✅ 部署完成！"
+                    echo "前端访问地址: http://192.168.10.168/aistudy"
+                    echo "后端服务目录: ${PROJECT_DEPLOY_DIR}/backend"
                 '''
             }
         }
@@ -158,14 +128,16 @@ ENDSSH
     
     post {
         success {
-            echo '部署成功！'
+            echo '🎉 本地部署成功！'
+            echo "📁 部署目录: ${PROJECT_DEPLOY_DIR}"
+            echo "💾 备份目录: ${BACKUP_DIR}"
         }
         failure {
-            echo '部署失败！'
+            echo '❌ 部署失败！请查看构建日志排查问题'
         }
         always {
-            // 清理本地临时文件
-            sh 'rm -rf deploy-package deploy-package.tar.gz'
+            // 清理构建临时文件
+            sh 'rm -rf build-output node_modules frontend/node_modules backend/node_modules'
         }
     }
 }
