@@ -3,11 +3,16 @@ pipeline {
 
     environment {
         // 远程服务器配置
-        DEPLOY_HOST = '180.76.180.105'
-        DEPLOY_USER = 'root'  // 根据实际情况修改用户名
-        DEPLOY_PATH = '/opt/nginx/html/ai'
+        DEPLOY_HOST = credentials('deploy-host-168')
+        DEPLOY_USER = credentials('deploy-user-138')
+        SSH_CREDENTIALS_ID = 'deploy-ssh168-key'
+        DEPLOY_PATH = '/www/wwwroot/gitadmin.localgitserver.com/ai'
         // 如果需要 SSH 密钥，可以在 Jenkins 中配置 SSH credentials
         // SSH_CREDENTIALS = credentials('deploy-ssh-key')
+    }
+    // 定义工具（如果需要指定 Node.js 版本，需先在 Jenkins 全局工具配置中配置 NodeJS 安装）
+    tools {
+        nodejs 'NodeJS-22' // 替换为你 Jenkins 中配置的 Node.js 工具名称（若无则注释此行）
     }
     
     stages {
