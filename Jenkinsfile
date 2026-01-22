@@ -69,7 +69,7 @@ pipeline {
                     cp -r backend/dist build-output/backend/
                     cp -r backend/prisma build-output/backend/
                     cp backend/package.json build-output/backend/
-                    cp backend/package-lock.json build-output/backend/
+                    #    cp backend/package-lock.json build-output/backend/
                    
                 '''
             }
