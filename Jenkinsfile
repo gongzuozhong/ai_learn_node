@@ -73,19 +73,7 @@ pipeline {
                 '''
             }
         }
-
-        stage('Install SSH Client') {
-            steps {
-                echo "===============================安装SSH Client========================================"
-                sh '''
-                    su - root -s /bin/bash -c "
-                        apt-get update -y && 
-                        apt-get install -y openssh-client curl vim && 
-                        apt-get clean  # 清理缓存，减小容器体积
-                    "
-                '''
-            }
-        }
+        
         stage('Deploy via SSH') {
             steps {
                 withEnv([]) {
