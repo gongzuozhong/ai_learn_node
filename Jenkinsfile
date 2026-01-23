@@ -78,8 +78,11 @@ pipeline {
             steps {
                 echo "===============================安装SSH Client========================================"
                 sh '''
-                    # 基于 Debian 镜像的 Jenkins（官方镜像默认是 Debian）
-                    sudo apt-get update && apt-get install -y openssh-client
+                    su - root -c "
+                        apt-get update -y && 
+                        apt-get install -y openssh-client curl vim && 
+                        apt-get clean  # 清理缓存，减小容器体积
+                    "
                 '''
             }
         }
