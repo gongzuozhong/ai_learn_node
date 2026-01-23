@@ -79,7 +79,7 @@ pipeline {
                 echo "===============================安装SSH Client========================================"
                 sh '''
                     # 基于 Debian 镜像的 Jenkins（官方镜像默认是 Debian）
-                    apt-get update && apt-get install -y openssh-client
+                    sudo apt-get update && apt-get install -y openssh-client
                 '''
             }
         }
