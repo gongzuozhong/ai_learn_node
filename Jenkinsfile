@@ -2,8 +2,8 @@ pipeline {
     agent any
     environment {
         HOST_IP = '192.168.10.168' //宿主机内网 IP（容器可访问）
-        HOST_USER = 'root'          // 宿主机用户名
-        HOST_PASS = '123456' //宿主机密码（生产环境用密钥更安全）
+        HOST_USER = ''          // 宿主机用户名
+        HOST_PASS = '' //宿主机密码（生产环境用密钥更安全）
         HOST_TARGET = '/www/wwwroot/gitadmin.localgitserver.com/aistudy'  // 宿主机目标目录
         HOST_BACKUP = '/www/wwwroot/gitadmin.localgitserver.com/aistudy-backups'  //宿主机备份目录
     }
