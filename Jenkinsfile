@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         // 本地 Web 部署目录（根据实际环境修改，需确保 Jenkins 有读写权限）
-        LOCAL_WEB_ROOT = '/www/wwwroot/gitadmin.localgitserver.com'
+        LOCAL_WEB_ROOT = '/mnt'
         // 项目部署子目录（避免与其他项目冲突）
         PROJECT_DEPLOY_DIR = "${LOCAL_WEB_ROOT}/aistudy"
         // 备份目录（保留历史版本，便于回滚）
