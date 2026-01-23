@@ -78,7 +78,7 @@ pipeline {
             steps {
                 echo "===============================安装SSH Client========================================"
                 sh '''
-                    su - root -c "
+                    su - root -s /bin/bash -c "
                         apt-get update -y && 
                         apt-get install -y openssh-client curl vim && 
                         apt-get clean  # 清理缓存，减小容器体积
