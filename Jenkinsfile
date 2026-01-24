@@ -74,59 +74,59 @@ pipeline {
             }
         }
         
-    stage('Deploy via SSH') {
-        steps {
-            withEnv([]) {
-                echo "通过 SSH 部署到宿主机: ${HOST_TARGET}"
-                sh '''
-                    # 1. 检查SSH密钥文件是否存在
-                    if [ ! -f "${SSH_KEY_PATH}" ]; then
-                        echo "❌ 错误: SSH密钥文件不存在: ${SSH_KEY_PATH}"
-                        exit 1
-                    fi
-                    
-                    # 2. 设置密钥权限（确保只有所有者可读）
-                    chmod 600 ${SSH_KEY_PATH}
-                    
-                    # 3. 宿主机创建备份目录
-                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "mkdir -p ${HOST_BACKUP}"
-                    
-                    # 4. 宿主机备份原有部署目录（如有）
-                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
-                        if [ -d '${HOST_TARGET}' ]; then
-                            TIMESTAMP=$(date +%Y%m%d%H%M%S)
-                            mv '${HOST_TARGET}' '${HOST_BACKUP}/backup_$TIMESTAMP'
+        stage('Deploy via SSH') {
+            steps {
+                withEnv([]) {
+                    echo "通过 SSH 部署到宿主机: ${HOST_TARGET}"
+                    sh '''
+                        # 1. 检查SSH密钥文件是否存在
+                        if [ ! -f "${SSH_KEY_PATH}" ]; then
+                            echo "❌ 错误: SSH密钥文件不存在: ${SSH_KEY_PATH}"
+                            exit 1
                         fi
-                    "
-                    
-                    # 5. SCP传输构建产物到宿主机（注意：scp命令的-i参数位置）
-                    scp -i ${SSH_KEY_PATH} -r -o StrictHostKeyChecking=no build-output/* ${HOST_USER}@${HOST_IP}:${HOST_TARGET}/
-                    
-                    # 6. 宿主机修复目录权限
-                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "chmod -R 755 ${HOST_TARGET}"
-                    
-                    # 7. 安装后端生产依赖
-                    echo "安装后端生产依赖..."
-                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
-                        cd ${HOST_TARGET}/backend
-                        npm install --production
-                    "
-                    
-                    # 8. 配置目录权限
-                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
-                        chmod -R 755 ${HOST_TARGET}
-                        if id -u www >/dev/null 2>&1; then
-                            chown -R www:www ${HOST_TARGET}
-                        fi
-                    "
-                    
-                    echo "✅ 部署完成！"
-                    echo "前端访问地址: http://192.168.10.168/aistudy"
-                    echo "后端服务目录: ${HOST_TARGET}/backend"
-                '''
+                        
+                        # 2. 设置密钥权限（确保只有所有者可读）
+                        chmod 600 ${SSH_KEY_PATH}
+                        
+                        # 3. 宿主机创建备份目录
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "mkdir -p ${HOST_BACKUP}"
+                        
+                        # 4. 宿主机备份原有部署目录（如有）
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
+                            if [ -d '${HOST_TARGET}' ]; then
+                                TIMESTAMP=$(date +%Y%m%d%H%M%S)
+                                mv '${HOST_TARGET}' '${HOST_BACKUP}/backup_$TIMESTAMP'
+                            fi
+                        "
+                        
+                        # 5. SCP传输构建产物到宿主机（注意：scp命令的-i参数位置）
+                        scp -i ${SSH_KEY_PATH} -r -o StrictHostKeyChecking=no build-output/* ${HOST_USER}@${HOST_IP}:${HOST_TARGET}/
+                        
+                        # 6. 宿主机修复目录权限
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "chmod -R 755 ${HOST_TARGET}"
+                        
+                        # 7. 安装后端生产依赖
+                        echo "安装后端生产依赖..."
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
+                            cd ${HOST_TARGET}/backend
+                            npm install --production
+                        "
+                        
+                        # 8. 配置目录权限
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
+                            chmod -R 755 ${HOST_TARGET}
+                            if id -u www >/dev/null 2>&1; then
+                                chown -R www:www ${HOST_TARGET}
+                            fi
+                        "
+                        
+                        echo "✅ 部署完成！"
+                        echo "前端访问地址: http://192.168.10.168/aistudy"
+                        echo "后端服务目录: ${HOST_TARGET}/backend"
+                    '''
+                }
             }
         }
-    }
     post {
         success {
             echo '🎉 本地部署成功！'
