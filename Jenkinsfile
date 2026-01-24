@@ -80,10 +80,13 @@ pipeline {
                     echo "通过 SSH 部署到宿主机: ${HOST_TARGET}"
                     sh '''
                         # 1. 宿主机创建备份目录（通过 SSH 执行宿主机命令）
-                        ssh -i -p "${HOST_PASS}" ssh -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "mkdir -p ${HOST_BACKUP}"
+                        #ssh -i -p "${HOST_PASS}" ssh -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "mkdir -p ${HOST_BACKUP}"
+                        # 使用SSH密钥认证
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "mkdir -p ${HOST_BACKUP}"
+
                         
                         # 2. 宿主机备份原有部署目录（如有）
-                        ssh -i -p "${HOST_PASS}" ssh -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
+                        ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
                             if [ -d '${HOST_TARGET}' ]; then
                                 TIMESTAMP=$(date +%Y%m%d%H%M%S)
                                 mv '${HOST_TARGET}' '${HOST_BACKUP}/backup_$TIMESTAMP'
@@ -91,10 +94,10 @@ pipeline {
                         "
                         
                         # 3. SCP 传输构建产物到宿主机
-                        ssh -i -p "${HOST_PASS}" scp -r -o StrictHostKeyChecking=no build-output/* ${HOST_USER}@${HOST_IP}:${HOST_TARGET}/
+                       ssh -i ${SSH_KEY_PATH} scp -r -o StrictHostKeyChecking=no build-output/* ${HOST_USER}@${HOST_IP}:${HOST_TARGET}/
                         
                         # 4. 宿主机修复目录权限（确保 Web 服务可访问）
-                        ssh -i -p "${HOST_PASS}" ssh -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "chmod -R 755 ${HOST_TARGET}"
+                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "chmod -R 755 ${HOST_TARGET}"
 
                         # 安装后端生产依赖（避免复制 node_modules，减少体积）
                         echo "安装后端生产依赖..."
