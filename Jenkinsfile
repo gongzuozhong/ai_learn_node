@@ -2,8 +2,8 @@ pipeline {
     agent any
     environment {
         HOST_IP = '192.168.10.168' //宿主机内网 IP（容器可访问）
-        HOST_USER = ''          // 宿主机用户名
-        HOST_PASS = '' //宿主机密码（生产环境用密钥更安全）
+        HOST_USER = 'root'          // 宿主机用户名
+        SSH_KEY_PATH = '/var/jenkins_home/.ssh/id_rsa'
         HOST_TARGET = '/www/wwwroot/gitadmin.localgitserver.com/aistudy'  // 宿主机目标目录
         HOST_BACKUP = '/www/wwwroot/gitadmin.localgitserver.com/aistudy-backups'  //宿主机备份目录
     }
@@ -80,10 +80,10 @@ pipeline {
                     echo "通过 SSH 部署到宿主机: ${HOST_TARGET}"
                     sh '''
                         # 1. 宿主机创建备份目录（通过 SSH 执行宿主机命令）
-                        sshpass -p "${HOST_PASS}" ssh -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "mkdir -p ${HOST_BACKUP}"
+                        ssh -i -p "${HOST_PASS}" ssh -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "mkdir -p ${HOST_BACKUP}"
                         
                         # 2. 宿主机备份原有部署目录（如有）
-                        sshpass -p "${HOST_PASS}" ssh -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
+                        ssh -i -p "${HOST_PASS}" ssh -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
                             if [ -d '${HOST_TARGET}' ]; then
                                 TIMESTAMP=$(date +%Y%m%d%H%M%S)
                                 mv '${HOST_TARGET}' '${HOST_BACKUP}/backup_$TIMESTAMP'
@@ -91,10 +91,10 @@ pipeline {
                         "
                         
                         # 3. SCP 传输构建产物到宿主机
-                        sshpass -p "${HOST_PASS}" scp -r -o StrictHostKeyChecking=no build-output/* ${HOST_USER}@${HOST_IP}:${HOST_TARGET}/
+                        ssh -i -p "${HOST_PASS}" scp -r -o StrictHostKeyChecking=no build-output/* ${HOST_USER}@${HOST_IP}:${HOST_TARGET}/
                         
                         # 4. 宿主机修复目录权限（确保 Web 服务可访问）
-                        sshpass -p "${HOST_PASS}" ssh -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "chmod -R 755 ${HOST_TARGET}"
+                        ssh -i -p "${HOST_PASS}" ssh -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "chmod -R 755 ${HOST_TARGET}"
 
                         # 安装后端生产依赖（避免复制 node_modules，减少体积）
                         echo "安装后端生产依赖..."
