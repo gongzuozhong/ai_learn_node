@@ -127,6 +127,7 @@ pipeline {
                 }
             }
         }
+    }
     post {
         success {
             echo '🎉 本地部署成功！'
