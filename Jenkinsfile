@@ -4,7 +4,7 @@ pipeline {
         HOST_IP = '192.168.10.168' //宿主机内网 IP（容器可访问）
         HOST_USER = 'root'          // 宿主机用户名
         SSH_KEY_PATH = '/var/jenkins_home/.ssh/id_rsa'
-        HOST_TARGET = '/www/wwwroot/gitadmin.localgitserver.com/aistudy'  // 宿主机目标目录
+        HOST_TARGET = '/www/wwwroot/gitadmin.localgitserver.com/'  // 宿主机目标目录
         HOST_BACKUP = '/www/wwwroot/gitadmin.localgitserver.com/aistudy-backups'  //宿主机备份目录
     }
     // 定义工具（Node.js 需在 Jenkins 全局工具配置中提前配置）
