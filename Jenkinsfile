@@ -109,7 +109,7 @@ pipeline {
                         echo "安装后端生产依赖..."
                         ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ${HOST_USER}@${HOST_IP} "
                             cd ${HOST_TARGET}/backend
-                            npm install --production
+                            #npm install --production
                         "
                         
                         # 8. 配置目录权限
